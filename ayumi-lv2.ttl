@@ -13,44 +13,249 @@
 @prefix state:   <http://lv2plug.in/ns/ext/state#> .
 @prefix time:    <http://lv2plug.in/ns/ext/time#> .
 @prefix urid:    <http://lv2plug.in/ns/ext/urid#> .
+@prefix units:   <http://lv2plug.in/ns/extensions/units#> .
+@prefix plug:    <http://lv2plug.in/plugins/eg-params#> .
+@prefix patch: <http://lv2plug.in/ns/ext/patch#> .
 
+plug:clock
+    a lv2:Parameter ;
+    rdfs:label "Clock" ;
+    rdfs:comment "Clock frequency" ;
+    rdfs:range atom:Double ;
+    units:unit units:mhz ;
+    lv2:minimum 1.0 ;
+    lv2:maximum 2.0 ;
+    lv2:default 2.0 .
+
+plug:ymmode
+    a lv2:Parameter ;
+    rdfs:label "YM Mode" ;
+    rdfs:comment "Enable YM2149 mode" ;
+    rdfs:range atom:Bool ;
+    lv2:default 1 .
+
+plug:noise_period
+    a lv2:Parameter ;
+    rdfs:label "Noise period" ;
+    rdfs:comment "Period of the noise" ;
+    rdfs:range atom:Int ;
+    lv2:minimum 0 ;
+    lv2:maximum 31 ;
+    lv2:default 0 .
+
+plug:envelope_period
+    a lv2:Parameter ;
+    rdfs:label "Envelope period" ;
+    rdfs:comment "Period of the envelope" ;
+    rdfs:range atom:Int ;
+    lv2:minimum 0 ;
+    lv2:maximum 65535 ;
+    lv2:default 0 .
+
+plug:envelope_hold
+    a lv2:Parameter ;
+    rdfs:label "Envelope Hold" ;
+    rdfs:comment "Hold the last value" ;
+    rdfs:range atom:Bool ;
+    lv2:default 0 .
+
+plug:envelope_alternate
+    a lv2:Parameter ;
+    rdfs:label "Envelope Alternate" ;
+    rdfs:comment "Alternate between up and down ramps" ;
+    rdfs:range atom:Bool ;
+    lv2:default 0 .
+
+plug:envelope_attack
+    a lv2:Parameter ;
+    rdfs:label "Envelope Attack" ;
+    rdfs:comment "Produce attach phase" ;
+    rdfs:range atom:Bool ;
+    lv2:default 0 .
+
+plug:envelope_continue
+    a lv2:Parameter ;
+    rdfs:label "Envelope Continue" ;
+    rdfs:comment "Loop the envelope as specified by Hold" ;
+    rdfs:range atom:Bool ;
+    lv2:default 0 .
+
+plug:channel_a_period
+    a lv2:Parameter ;
+    rdfs:label "Channel A period" ;
+    rdfs:comment "Period of tone generator A" ;
+    rdfs:range atom:Int ;
+    lv2:minimum 0 ;
+    lv2:maximum 4095 ;
+    lv2:default 0 .
+
+plug:channel_b_period
+    a lv2:Parameter ;
+    rdfs:label "Channel B period" ;
+    rdfs:comment "Period of tone generator B" ;
+    rdfs:range atom:Int ;
+    lv2:minimum 0 ;
+    lv2:maximum 4095 ;
+    lv2:default 0 .
+
+plug:channel_c_period
+    a lv2:Parameter ;
+    rdfs:label "Channel C period" ;
+    rdfs:comment "Period of tone generator C" ;
+    rdfs:range atom:Int ;
+    lv2:minimum 0 ;
+    lv2:maximum 4095 ;
+    lv2:default 0 .
+
+plug:channel_a_level
+    a lv2:Parameter ;
+    rdfs:label "Channel A level" ;
+    rdfs:comment "Level of tone generator A" ;
+    rdfs:range atom:Int ;
+    lv2:minimum 0 ;
+    lv2:maximum 15 ;
+    lv2:default 0 .
+
+plug:channel_b_level
+    a lv2:Parameter ;
+    rdfs:label "Channel B level" ;
+    rdfs:comment "Level of tone generator B" ;
+    rdfs:range atom:Int ;
+    lv2:minimum 0 ;
+    lv2:maximum 15 ;
+    lv2:default 0 .
+
+plug:channel_c_level
+    a lv2:Parameter ;
+    rdfs:label "Channel C level" ;
+    rdfs:comment "Level of tone generator C" ;
+    rdfs:range atom:Int ;
+    lv2:minimum 0 ;
+    lv2:maximum 15 ;
+    lv2:default 0 .
+
+plug:channel_a_mode
+    a lv2:Parameter ;
+    rdfs:label "Channel A mode" ;
+    rdfs:comment "Use envelope generator for level of tone generator A" ;
+    rdfs:range atom:Bool ;
+    lv2:default 0 .
+
+plug:channel_b_mode
+    a lv2:Parameter ;
+    rdfs:label "Channel B mode" ;
+    rdfs:comment "Use envelope generator for level of tone generator B" ;
+    rdfs:range atom:Bool ;
+    lv2:default 0 .
+
+plug:channel_c_mode
+    a lv2:Parameter ;
+    rdfs:label "Channel C mode" ;
+    rdfs:comment "Use envelope generator for level of tone generator C" ;
+    rdfs:range atom:Bool ;
+    lv2:default 0 .
+
+plug:channel_a_tone
+    a lv2:Parameter ;
+    rdfs:label "Channel A tone" ;
+    rdfs:comment "Enable tone generator in channel A" ;
+    rdfs:range atom:Bool ;
+    lv2:default 0 .
+
+plug:channel_b_tone
+    a lv2:Parameter ;
+    rdfs:label "Channel B tone" ;
+    rdfs:comment "Enable tone generator in channel B" ;
+    rdfs:range atom:Bool ;
+    lv2:default 0 .
+
+plug:channel_c_tone
+    a lv2:Parameter ;
+    rdfs:label "Channel C tone" ;
+    rdfs:comment "Enable tone generator in channel C" ;
+    rdfs:range atom:Bool ;
+    lv2:default 0 .
+
+plug:channel_a_noise
+    a lv2:Parameter ;
+    rdfs:label "Channel A noise" ;
+    rdfs:comment "Enable noise generator in channel A" ;
+    rdfs:range atom:Bool ;
+    lv2:default 0 .
+
+plug:channel_b_noise
+    a lv2:Parameter ;
+    rdfs:label "Channel B noise" ;
+    rdfs:comment "Enable noise generator in channel B" ;
+    rdfs:range atom:Bool ;
+    lv2:default 0 .
+
+plug:channel_c_noise
+    a lv2:Parameter ;
+    rdfs:label "Channel C noise" ;
+    rdfs:comment "Enable noise generator in channel C" ;
+    rdfs:range atom:Bool ;
+    lv2:default 0 .
 
 <https://github.com/atsushieno/ayumi-lv2>
-  a doap:Project, lv2:Plugin, lv2:InstrumentPlugin ;
+    a doap:Project, lv2:Plugin, lv2:InstrumentPlugin ;
+    doap:name "ayumi-lv2" ;
+    doap:license <https://spdx.org/licenses/MIT> ;
+    doap:maintainer [
+        foaf:name     "Atsushi Eno" ;
+        foaf:homepage <https://github.com/atsushieno/ayumi-lv2> ;
+        foaf:mbox     <mailto:atsushieno@gmail.com> ;
+    ] ;
+    rdfs:comment "ayumi AY-3-8910 and YM2149 emulator for LV2" ;
 
-  doap:name "ayumi-lv2" ;
-  doap:license <https://spdx.org/licenses/MIT> ;
-  doap:maintainer [
-    foaf:name     "Atsushi Eno" ;
-    foaf:homepage <https://github.com/atsushieno/ayumi-lv2> ;
-    foaf:mbox     <mailto:atsushieno@gmail.com> ;
-  ] ;
-  rdfs:comment "ayumi AY-3-8910 and YM2149 emulator for LV2" ;
+    lv2:minorVersion 0 ;
+    lv2:microVersion 1 ;
 
-  lv2:minorVersion 0 ;
-  lv2:microVersion 1 ;
+    lv2:requiredFeature urid:map ;
+    lv2:optionalFeature opts:options ;
 
-  lv2:requiredFeature urid:map ;
-  lv2:optionalFeature opts:options ;
+    opts:supportedOption param:sampleRate ;
 
-  opts:supportedOption param:sampleRate ;
+    patch:writable plug:clock,
+        plug:ymmode,
+        plug:noise_period,
+        plug:envelope_period,
+        plug:envelope_hold,
+        plug:envelope_alternate,
+        plug:envelope_attack,
+        plug:envelope_continue,
+        plug:channel_a_period,
+        plug:channel_b_period,
+        plug:channel_c_period,
+        plug:channel_a_level,
+        plug:channel_b_level,
+        plug:channel_c_level,
+        plug:channel_a_mode,
+        plug:channel_b_mode,
+        plug:channel_c_mode,
+        plug:channel_a_tone,
+        plug:channel_b_tone,
+        plug:channel_c_tone,
+        plug:channel_a_noise,
+        plug:channel_b_noise,
+        plug:channel_c_noise;
 
-  lv2:port [
-    a lv2:InputPort, atom:AtomPort ;
-    atom:bufferType atom:Sequence ;
-    atom:supports midi:MidiEvent ;
-    lv2:designation lv2:control ;
-    lv2:index 0 ;
-    lv2:symbol "control" ;
-    lv2:name "Control"
-  ] , [
-    a lv2:AudioPort, lv2:OutputPort ;
-    lv2:index 1 ;
-    lv2:symbol "out_left" ;
-    lv2:name "Left Output"
-  ] , [
-    a lv2:AudioPort, lv2:OutputPort ;
-    lv2:index 2 ;
-    lv2:symbol "out_right" ;
-    lv2:name "Right Output"
-  ] .
+    lv2:port [
+        a lv2:InputPort, atom:AtomPort ;
+        atom:bufferType atom:Sequence ;
+        atom:supports midi:MidiEvent ;
+        lv2:designation lv2:control ;
+        lv2:index 0 ;
+        lv2:symbol "control" ;
+        lv2:name "Control"
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 1 ;
+        lv2:symbol "out_left" ;
+        lv2:name "Left Output"
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 2 ;
+        lv2:symbol "out_right" ;
+        lv2:name "Right Output"
+    ] .
