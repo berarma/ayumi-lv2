@@ -20,34 +20,41 @@
 #define CLOCK_FREQ 2e6 /* clock_rate / (sample_rate * 8 * 8) must be < 1.0 */
 
 typedef struct {
+	int tone_off;
+	int noise_off;
+	int envelope_on;
+	int volume;
+	int pan;
+	int note;
+	bool note_on_state;
+} AyumiLV2Channel;
+
+typedef struct {
 	LV2_URID_Map *urid_map;
 	LV2_URID midi_event_uri;
 	struct ayumi* impl;
-	int mode;
-	int tone_off[3];
-	int noise_off[3];
-	int envelope_on[3];
-	int volume[3];
-	int noise_period;
-	int envelope_shape;
-	int32_t envelope;
-	int32_t pitchbend;
-	double sample_rate;
 	float* ports[3];
+	double sample_rate;
 	bool active;
-	bool note_on_state[3];
+	int mode;
+	int noise_period;
+	int32_t envelope;
+	int envelope_shape;
+	int32_t pitchbend;
+	AyumiLV2Channel channels[3];
 } AyumiLV2Handle;
 
 void init_ayumi(AyumiLV2Handle* handle) {
 	ayumi_configure(handle->impl, handle->mode, CLOCK_FREQ, (int) handle->sample_rate);
 
 	ayumi_set_noise(handle->impl, handle->noise_period);
+	ayumi_set_envelope(handle->impl, handle->envelope);
+	ayumi_set_envelope_shape(handle->impl, handle->envelope_shape);
 	for (int i = 0; i < 3; i++) {
-		handle->note_on_state[i] = 0;
-		ayumi_set_pan(handle->impl, i, 0.5, 0); // 0(L)...1(R)
-		ayumi_set_mixer(handle->impl, i, handle->tone_off[i], handle->noise_off[i], handle->envelope_on[i]); // should be quiet by default
-		ayumi_set_envelope(handle->impl, 0x40); // somewhat slow
-		ayumi_set_volume(handle->impl, i, handle->volume[i]); // FIXME: max = 14?? 15 doesn't work
+		handle->channels[i].note_on_state = false;
+		ayumi_set_pan(handle->impl, i, handle->channels[i].pan, 0);
+		ayumi_set_mixer(handle->impl, i, handle->channels[i].tone_off, handle->channels[i].noise_off, handle->channels[i].envelope_on);
+		ayumi_set_volume(handle->impl, i, handle->channels[i].volume);
 	}
 }
 
@@ -62,14 +69,14 @@ LV2_Handle ayumi_lv2_instantiate(
 	handle->sample_rate = sample_rate;
 	handle->impl = calloc(sizeof(struct ayumi), 1);
 
+	handle->envelope = 0;
 	handle->envelope_shape = 0;
 	handle->noise_period = 0;
-	ayumi_set_envelope_shape(handle->impl, handle->envelope_shape); // see http://fmpdoc.fmp.jp/%E3%82%A8%E3%83%B3%E3%83%99%E3%83%AD%E3%83%BC%E3%83%97%E3%83%8F%E3%83%BC%E3%83%89%E3%82%A6%E3%82%A7%E3%82%A2/
 	for (int i = 0; i < 3; i++) {
-		handle->volume[i] = 15;
-		handle->tone_off[i] = 0;
-		handle->noise_off[i] = 1;
-		handle->envelope_on[i] = 0;
+		handle->channels[i].volume = 15;
+		handle->channels[i].tone_off = 0;
+		handle->channels[i].noise_off = 1;
+		handle->channels[i].envelope_on = 0;
 	}
 
 	init_ayumi(handle);
@@ -107,87 +114,100 @@ double key_to_freq(double key) {
 }
 
 void ayumi_lv2_process_midi_event(AyumiLV2Handle *handle, LV2_Atom_Event *ev) {
-	uint8_t * msg = (uint8_t *)(ev + 1);
-	int channel = msg[0] & 0xF;
-	if (channel > 2)
+	uint8_t* msg = (uint8_t *)(ev + 1);
+	AyumiLV2Channel* channel;
+	int cn = msg[0] & 0xF;
+	if (cn > 2)
 		return;
 
+	channel = &handle->channels[cn];
+
 	switch (lv2_midi_message_type(msg)) {
-	case LV2_MIDI_MSG_NOTE_OFF: note_off:
-		if (!handle->note_on_state[channel])
+	case LV2_MIDI_MSG_NOTE_OFF: // Note off
+		if (!channel->note_on_state || channel->note != msg[1])
 			break; // not at note on state
-		ayumi_set_volume(handle->impl, channel, 0);
-		ayumi_set_mixer(handle->impl, channel, handle->tone_off[channel], handle->noise_off[channel], 0);
-		handle->note_on_state[channel] = false;
+		ayumi_set_volume(handle->impl, cn, 0);
+		ayumi_set_mixer(handle->impl, cn, channel->tone_off, channel->noise_off, 0);
+		channel->note_on_state = false;
 		break;
 	case LV2_MIDI_MSG_NOTE_ON:
-		if (msg[2] == 0)
-			goto note_off; // it is illegal though.
-		if (handle->note_on_state[channel])
-			break; // busy
-		ayumi_set_volume(handle->impl, channel, handle->volume[channel]);
-		ayumi_set_mixer(handle->impl, channel, handle->tone_off[channel], handle->noise_off[channel], handle->envelope_on[channel]);
+		ayumi_set_volume(handle->impl, cn, channel->volume);
+		ayumi_set_mixer(handle->impl, cn, channel->tone_off, channel->noise_off, channel->envelope_on);
 		ayumi_set_envelope_shape(handle->impl, handle->envelope_shape);
-		ayumi_set_tone(handle->impl, channel, CLOCK_FREQ / (16.0 * key_to_freq(msg[1])));
-		handle->note_on_state[channel] = true;
+		ayumi_set_tone(handle->impl, cn, CLOCK_FREQ / (16.0 * key_to_freq(msg[1])));
+		channel->note_on_state = true;
+		channel->note = msg[1];
 		break;
-	case LV2_MIDI_MSG_PGM_CHANGE:
-			handle->tone_off[channel] = msg[1] & 1 ? 1 : 0;
-			handle->noise_off[channel] = msg[1] == 0 || msg[1] == 3 ? 1 : 0;
-			ayumi_set_mixer(handle->impl, channel, handle->tone_off[channel], handle->noise_off[channel], handle->note_on_state[channel] ? handle->envelope_on[channel] : 0);
+	case LV2_MIDI_MSG_PGM_CHANGE: // Mixer
+		channel->tone_off = msg[1] & 1 ? 1 : 0;
+		channel->noise_off = msg[1] == 0 || msg[1] == 3 ? 1 : 0;
+		ayumi_set_mixer(handle->impl, cn, channel->tone_off, channel->noise_off, channel->note_on_state ? channel->envelope_on : 0);
 		break;
 	case LV2_MIDI_MSG_CONTROLLER:
 		switch (msg[1]) {
-		case LV2_MIDI_CTL_MSB_PAN:
-			ayumi_set_pan(handle->impl, channel, msg[2] / 127.0, 0);
+		case LV2_MIDI_CTL_ALL_NOTES_OFF: // All notes off
+			if (!channel->note_on_state)
+				break; // not at note on state
+			ayumi_set_volume(handle->impl, cn, 0);
+			ayumi_set_mixer(handle->impl, cn, channel->tone_off, channel->noise_off, 0);
+			channel->note_on_state = false;
 			break;
-		case LV2_MIDI_CTL_MSB_MAIN_VOLUME:
-			handle->volume[channel] = msg[2] >> 3;
-			if (handle->note_on_state[channel]) {
-				ayumi_set_volume(handle->impl, channel, handle->volume[channel]);
+		case LV2_MIDI_CTL_MSB_PAN: // Pan
+			channel->pan = msg[2] / 127.0;
+			ayumi_set_pan(handle->impl, cn, channel->pan, 0);
+			break;
+		case LV2_MIDI_CTL_MSB_MAIN_VOLUME: // Amplitude
+			channel->volume = msg[2] >> 3;
+			if (channel->note_on_state) {
+				ayumi_set_volume(handle->impl, cn, channel->volume);
 			}
 			break;
-		case LV2_MIDI_CTL_SC1_SOUND_VARIATION:
-			handle->envelope_on[channel] = msg[2] >= 64;
-			if (handle->note_on_state[channel]) {
-				ayumi_set_mixer(handle->impl, channel, handle->tone_off[channel], handle->noise_off[channel], handle->envelope_on[channel]);
+		case LV2_MIDI_CTL_SC1_SOUND_VARIATION: // Env. on/off
+			channel->envelope_on = msg[2] >= 64;
+			if (channel->note_on_state) {
+				ayumi_set_mixer(handle->impl, cn, channel->tone_off, channel->noise_off, channel->envelope_on);
 			}
 			break;
-		case LV2_MIDI_CTL_SC2_TIMBRE:
+		case LV2_MIDI_CTL_SC2_TIMBRE: // Env. Hold
 			handle->envelope_shape = (handle->envelope_shape & 0xE) | (msg[2] >= 64 ? 1 : 0);
 			ayumi_set_envelope_shape(handle->impl, handle->envelope_shape);
 			break;
-		case LV2_MIDI_CTL_SC3_RELEASE_TIME:
+		case LV2_MIDI_CTL_SC3_RELEASE_TIME: // Env. Alternate
 			handle->envelope_shape = (handle->envelope_shape & 0xD) | (msg[2] >= 64 ? 2 : 0);
 			ayumi_set_envelope_shape(handle->impl, handle->envelope_shape);
 			break;
-		case LV2_MIDI_CTL_SC4_ATTACK_TIME:
+		case LV2_MIDI_CTL_SC4_ATTACK_TIME: // Env. Attack
 			handle->envelope_shape = (handle->envelope_shape & 0xB) | (msg[2] >= 64 ? 4 : 0);
 			ayumi_set_envelope_shape(handle->impl, handle->envelope_shape);
 			break;
-		case LV2_MIDI_CTL_SC5_BRIGHTNESS:
+		case LV2_MIDI_CTL_SC5_BRIGHTNESS: // Env. Continue
 			handle->envelope_shape = (handle->envelope_shape & 0x7) | (msg[2] >= 64 ? 8 : 0);
 			ayumi_set_envelope_shape(handle->impl, handle->envelope_shape);
 			break;
-		case LV2_MIDI_CTL_SC6:
+		case LV2_MIDI_CTL_SC6: // Env. period coarse
 			handle->envelope = (handle->envelope & 0x01FF) | (msg[2] << 9);
 			ayumi_set_envelope(handle->impl, handle->envelope);
 			break;
-		case LV2_MIDI_CTL_SC7:
+		case LV2_MIDI_CTL_SC7: // Env. period fine
 			handle->envelope = (handle->envelope & 0xFE03) | (msg[2] << 2);
 			ayumi_set_envelope(handle->impl, handle->envelope);
 			break;
-		case LV2_MIDI_CTL_SC8:
+		case LV2_MIDI_CTL_SC8: // Env. period extra-fine
 			handle->envelope = (handle->envelope & 0xFFFC) | (msg[2] >> 5);
 			ayumi_set_envelope(handle->impl, handle->envelope);
 			break;
-		case LV2_MIDI_CTL_SC9:
+		case LV2_MIDI_CTL_SC9: // Noise period
 			handle->noise_period = msg[2] >> 2;
 			ayumi_set_noise(handle->impl, handle->noise_period);
 			break;
-		case LV2_MIDI_CTL_SC10:
-			handle->mode = msg[2] >= 64 ? 1 : 0;
-			init_ayumi(handle);
+		case LV2_MIDI_CTL_SC10: // AY/YM mode
+			{
+				int mode = msg[2] >= 64 ? 1 : 0;
+				if (mode != handle->mode) {
+					handle->mode = mode;
+					init_ayumi(handle);
+				}
+			}
 			break;
 		}
 		break;
