@@ -15,12 +15,15 @@
 @prefix urid:    <http://lv2plug.in/ns/ext/urid#> .
 @prefix units:   <http://lv2plug.in/ns/extensions/units#> .
 @prefix plug:    <http://lv2plug.in/plugins/eg-params#> .
-@prefix patch: <http://lv2plug.in/ns/ext/patch#> .
+@prefix patch:   <http://lv2plug.in/ns/ext/patch#> .
+@prefix lv2pg:   <http://lv2plug.in/ns/ext/port-groups#> .
+@prefix ayumilv2: <http://github.com/berarma/ayumi-lv2#> .
 
 plug:clock
     a lv2:Parameter ;
     rdfs:label "Clock" ;
     rdfs:comment "Clock frequency" ;
+    lv2pg:group ayumilv2:Setup ;
     rdfs:range atom:Double ;
     units:unit units:mhz ;
     lv2:minimum 1.0 ;
@@ -31,6 +34,7 @@ plug:ymmode
     a lv2:Parameter ;
     rdfs:label "YM Mode" ;
     rdfs:comment "Enable YM2149 mode" ;
+    lv2pg:group ayumilv2:Setup ;
     rdfs:range atom:Bool ;
     lv2:default 1 .
 
@@ -38,6 +42,7 @@ plug:noise_period
     a lv2:Parameter ;
     rdfs:label "Noise period" ;
     rdfs:comment "Period of the noise" ;
+    lv2pg:group ayumilv2:Noise ;
     rdfs:range atom:Int ;
     lv2:minimum 0 ;
     lv2:maximum 31 ;
@@ -47,6 +52,7 @@ plug:envelope_period
     a lv2:Parameter ;
     rdfs:label "Envelope period" ;
     rdfs:comment "Period of the envelope" ;
+    lv2pg:group ayumilv2:Envelope ;
     rdfs:range atom:Int ;
     lv2:minimum 0 ;
     lv2:maximum 65535 ;
@@ -56,6 +62,7 @@ plug:envelope_hold
     a lv2:Parameter ;
     rdfs:label "Envelope Hold" ;
     rdfs:comment "Hold the last value" ;
+    lv2pg:group ayumilv2:Envelope ;
     rdfs:range atom:Bool ;
     lv2:default 0 .
 
@@ -63,6 +70,7 @@ plug:envelope_alternate
     a lv2:Parameter ;
     rdfs:label "Envelope Alternate" ;
     rdfs:comment "Alternate between up and down ramps" ;
+    lv2pg:group ayumilv2:Envelope ;
     rdfs:range atom:Bool ;
     lv2:default 0 .
 
@@ -70,6 +78,7 @@ plug:envelope_attack
     a lv2:Parameter ;
     rdfs:label "Envelope Attack" ;
     rdfs:comment "Produce attach phase" ;
+    lv2pg:group ayumilv2:Envelope ;
     rdfs:range atom:Bool ;
     lv2:default 0 .
 
@@ -77,6 +86,7 @@ plug:envelope_continue
     a lv2:Parameter ;
     rdfs:label "Envelope Continue" ;
     rdfs:comment "Loop the envelope as specified by Hold" ;
+    lv2pg:group ayumilv2:Envelope ;
     rdfs:range atom:Bool ;
     lv2:default 0 .
 
@@ -84,6 +94,7 @@ plug:channel_a_period
     a lv2:Parameter ;
     rdfs:label "Channel A period" ;
     rdfs:comment "Period of tone generator A" ;
+    lv2pg:group ayumilv2:ChannelA ;
     rdfs:range atom:Int ;
     lv2:minimum 0 ;
     lv2:maximum 4095 ;
@@ -93,6 +104,7 @@ plug:channel_b_period
     a lv2:Parameter ;
     rdfs:label "Channel B period" ;
     rdfs:comment "Period of tone generator B" ;
+    lv2pg:group ayumilv2:ChannelB ;
     rdfs:range atom:Int ;
     lv2:minimum 0 ;
     lv2:maximum 4095 ;
@@ -102,6 +114,7 @@ plug:channel_c_period
     a lv2:Parameter ;
     rdfs:label "Channel C period" ;
     rdfs:comment "Period of tone generator C" ;
+    lv2pg:group ayumilv2:ChannelC ;
     rdfs:range atom:Int ;
     lv2:minimum 0 ;
     lv2:maximum 4095 ;
@@ -111,6 +124,7 @@ plug:channel_a_level
     a lv2:Parameter ;
     rdfs:label "Channel A level" ;
     rdfs:comment "Level of tone generator A" ;
+    lv2pg:group ayumilv2:ChannelA ;
     rdfs:range atom:Int ;
     lv2:minimum 0 ;
     lv2:maximum 15 ;
@@ -120,6 +134,7 @@ plug:channel_b_level
     a lv2:Parameter ;
     rdfs:label "Channel B level" ;
     rdfs:comment "Level of tone generator B" ;
+    lv2pg:group ayumilv2:ChannelB ;
     rdfs:range atom:Int ;
     lv2:minimum 0 ;
     lv2:maximum 15 ;
@@ -129,6 +144,7 @@ plug:channel_c_level
     a lv2:Parameter ;
     rdfs:label "Channel C level" ;
     rdfs:comment "Level of tone generator C" ;
+    lv2pg:group ayumilv2:ChannelC ;
     rdfs:range atom:Int ;
     lv2:minimum 0 ;
     lv2:maximum 15 ;
@@ -138,6 +154,7 @@ plug:channel_a_mode
     a lv2:Parameter ;
     rdfs:label "Channel A mode" ;
     rdfs:comment "Use envelope generator for level of tone generator A" ;
+    lv2pg:group ayumilv2:ChannelA ;
     rdfs:range atom:Bool ;
     lv2:default 0 .
 
@@ -145,6 +162,7 @@ plug:channel_b_mode
     a lv2:Parameter ;
     rdfs:label "Channel B mode" ;
     rdfs:comment "Use envelope generator for level of tone generator B" ;
+    lv2pg:group ayumilv2:ChannelB ;
     rdfs:range atom:Bool ;
     lv2:default 0 .
 
@@ -152,6 +170,7 @@ plug:channel_c_mode
     a lv2:Parameter ;
     rdfs:label "Channel C mode" ;
     rdfs:comment "Use envelope generator for level of tone generator C" ;
+    lv2pg:group ayumilv2:ChannelC ;
     rdfs:range atom:Bool ;
     lv2:default 0 .
 
@@ -159,6 +178,7 @@ plug:channel_a_tone
     a lv2:Parameter ;
     rdfs:label "Channel A tone" ;
     rdfs:comment "Enable tone generator in channel A" ;
+    lv2pg:group ayumilv2:ChannelA ;
     rdfs:range atom:Bool ;
     lv2:default 0 .
 
@@ -166,6 +186,7 @@ plug:channel_b_tone
     a lv2:Parameter ;
     rdfs:label "Channel B tone" ;
     rdfs:comment "Enable tone generator in channel B" ;
+    lv2pg:group ayumilv2:ChannelB ;
     rdfs:range atom:Bool ;
     lv2:default 0 .
 
@@ -173,6 +194,7 @@ plug:channel_c_tone
     a lv2:Parameter ;
     rdfs:label "Channel C tone" ;
     rdfs:comment "Enable tone generator in channel C" ;
+    lv2pg:group ayumilv2:ChannelC ;
     rdfs:range atom:Bool ;
     lv2:default 0 .
 
@@ -180,6 +202,7 @@ plug:channel_a_noise
     a lv2:Parameter ;
     rdfs:label "Channel A noise" ;
     rdfs:comment "Enable noise generator in channel A" ;
+    lv2pg:group ayumilv2:ChannelA ;
     rdfs:range atom:Bool ;
     lv2:default 0 .
 
@@ -187,6 +210,7 @@ plug:channel_b_noise
     a lv2:Parameter ;
     rdfs:label "Channel B noise" ;
     rdfs:comment "Enable noise generator in channel B" ;
+    lv2pg:group ayumilv2:ChannelB ;
     rdfs:range atom:Bool ;
     lv2:default 0 .
 
@@ -194,8 +218,39 @@ plug:channel_c_noise
     a lv2:Parameter ;
     rdfs:label "Channel C noise" ;
     rdfs:comment "Enable noise generator in channel C" ;
+    lv2pg:group ayumilv2:ChannelC ;
     rdfs:range atom:Bool ;
     lv2:default 0 .
+
+ayumilv2:Setup
+    a lv2pg:InputGroup;
+    lv2:name "Setup" ;
+    lv2:symbol "SETUP" .
+
+ayumilv2:Noise
+    a lv2pg:InputGroup;
+    lv2:name "Noise" ;
+    lv2:symbol "NOISE" .
+
+ayumilv2:ChannelA
+    a lv2pg:InputGroup;
+    lv2:name "Channel A" ;
+    lv2:symbol "A" .
+
+ayumilv2:ChannelB
+    a lv2pg:InputGroup;
+    lv2:name "Channel B" ;
+    lv2:symbol "B" .
+
+ayumilv2:ChannelC
+    a lv2pg:InputGroup;
+    lv2:name "Channel C" ;
+    lv2:symbol "C" .
+
+ayumilv2:Envelope
+    a lv2pg:InputGroup;
+    lv2:name "Envelope" ;
+    lv2:symbol "ENV" .
 
 <https://github.com/atsushieno/ayumi-lv2>
     a doap:Project, lv2:Plugin, lv2:InstrumentPlugin ;
