@@ -4,7 +4,7 @@
 #include <math.h>
 #include "ayumi.h"
 
-static const double AY_dac_table[] = {
+const double AY_dac_table[] = {
   0.0, 0.0,
   0.00999465934234, 0.00999465934234,
   0.0144502937362, 0.0144502937362,
@@ -23,7 +23,7 @@ static const double AY_dac_table[] = {
   1.0, 1.0
 };
 
-static const double YM_dac_table[] = {
+const double YM_dac_table[] = {
   0.0, 0.0,
   0.00465400167849, 0.00772106507973,
   0.0109559777218, 0.0139620050355,

@@ -6,4 +6,8 @@ root = true
 [*]
 charset = utf-8
 end_of_line = lf
-indent_style = tab
+indent_style = space
+indent_size = 4
+
+[ayumi.{c,h}]
+indent_size = 2
