@@ -110,7 +110,6 @@ typedef struct {
 typedef struct {
 	LV2_URID_Map *urid_map;
 	LV2_URID midi_event_uri;
-	LV2_Log_Log*   log;
 	LV2_Log_Logger logger;
 	URIs uris;
 	struct ayumi* impl;
