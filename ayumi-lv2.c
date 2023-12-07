@@ -149,7 +149,12 @@ void update_ayumi(AyumiLV2Handle* handle, int cn) {
 }
 
 void init_ayumi(AyumiLV2Handle* handle) {
-	ayumi_configure(handle->impl, handle->mode, handle->clock, (int) handle->sample_rate);
+	const bool ok = ayumi_configure(handle->impl, handle->mode, handle->clock, (int) handle->sample_rate);
+
+	if (!ok) {
+		lv2_log_warning(&handle->logger, "The sample rate is too low for the clock source.\n");
+	}
+
 	for (int i = 0; i < 3; i++) {
 		if (handle->channels[i].note_on_state) {
 			handle->channels[i].period = note_to_period(handle, handle->channels[i].note);
@@ -164,6 +169,8 @@ LV2_Handle ayumi_lv2_instantiate(
 		const char * bundle_path,
 		const LV2_Feature *const * features)
 {
+	LV2_Log_Log* log;
+
 	AyumiLV2Handle* handle = (AyumiLV2Handle*) calloc(sizeof(AyumiLV2Handle), 1);
 
 	handle->urid_map = NULL;
@@ -172,14 +179,14 @@ LV2_Handle ayumi_lv2_instantiate(
 		if (!strcmp(f->URI, LV2_URID__map)) {
 			handle->urid_map = (LV2_URID_Map*) f->data;
 		} else if (!strcmp (features[i]->URI, LV2_LOG__log)) {
-			handle->log = (LV2_Log_Log*)features[i]->data;
+			log = (LV2_Log_Log*)features[i]->data;
 		}
 	}
 	assert(handle->urid_map);
 	handle->midi_event_uri = handle->urid_map->map(handle->urid_map->handle, LV2_MIDI__MidiEvent);
 
 	/* Initialise logger (if map is unavailable, will fallback to printf) */
-	lv2_log_logger_init (&handle->logger, handle->urid_map, handle->log);
+	lv2_log_logger_init (&handle->logger, handle->urid_map, log);
 
 	if (!handle->urid_map) {
 		lv2_log_error (&handle->logger, "PropEx.lv2: Host does not support urid:map\n");
