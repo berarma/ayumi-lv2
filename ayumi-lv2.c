@@ -125,7 +125,7 @@ typedef struct {
 	AyumiLV2Channel channels[3];
 } AyumiLV2Handle;
 
-int note_to_period(AyumiLV2Handle* handle, int note ) {
+int note_to_period(AyumiLV2Handle* handle, double note ) {
 	double freq = 220.0 * pow(1.059463, note - 45.0);
 
 	return handle->clock / (16.0 * freq);
@@ -249,13 +249,20 @@ void ayumi_lv2_process_midi_event(AyumiLV2Handle *handle, LV2_Atom_Event *ev) {
 		channel->note_on_state = false;
 		break;
 	case LV2_MIDI_MSG_NOTE_ON:
-		ayumi_set_volume(handle->impl, cn, channel->volume);
+		ayumi_set_volume(handle->impl, cn, (int)(channel->volume * msg[2] / 127.0));
 		ayumi_set_mixer(handle->impl, cn, channel->tone_off, channel->noise_off, channel->envelope_on);
 		ayumi_set_envelope_shape(handle->impl, handle->envelope_shape); // This will restart the envelope
 		channel->period = note_to_period(handle, msg[1]);
 		ayumi_set_tone(handle->impl, cn, channel->period);
 		channel->note_on_state = true;
 		channel->note = msg[1];
+		break;
+	case LV2_MIDI_MSG_BENDER:
+		{
+			const int pitch = msg[1] + (msg[2] << 7) - 0x2000;
+			channel->period = note_to_period(handle, channel->note + (pitch / 8192.0) * 12);
+			ayumi_set_tone(handle->impl, cn, channel->period);
+		}
 		break;
 	case LV2_MIDI_MSG_PGM_CHANGE: // Mixer
 		channel->tone_off = msg[1] & 1 ? 1 : 0;
@@ -343,8 +350,6 @@ void ayumi_lv2_process_midi_event(AyumiLV2Handle *handle, LV2_Atom_Event *ev) {
 			}
 			break;
 		}
-		break;
-	case LV2_MIDI_MSG_BENDER: handle->pitchbend = (msg[1] << 7) + msg[2];
 		break;
 	default:
 		break;
