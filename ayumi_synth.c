@@ -26,6 +26,7 @@
 static int note_to_period(AyumiSynth* synth, double note);
 static void ayumi_synth_update(AyumiSynth* synth, int cn);
 static void ayumi_synth_reset(AyumiSynth* synth);
+static void ayumi_synth_update_tone(AyumiSynth* synth, int index);
 
 int ayumi_synth_init(AyumiSynth* synth, double sample_rate) {
     synth->mode = YMMODE;
@@ -42,6 +43,12 @@ int ayumi_synth_init(AyumiSynth* synth, double sample_rate) {
 }
 
 void ayumi_synth_process(AyumiSynth* synth, float* left, float *right) {
+    synth->counter++;
+    for (int index = 0; index < 3; index++) {
+        if (synth->channels[index].modulation) {
+            ayumi_synth_update_tone(synth, index);
+        }
+    }
     ayumi_process(synth->ayumi);
     if (synth->remove_dc) {
         ayumi_remove_dc(synth->ayumi);
@@ -80,7 +87,8 @@ void ayumi_synth_midi(AyumiSynth* synth, uint8_t status, uint8_t data[]) {
         case LV2_MIDI_MSG_BENDER:
             {
                 const int pitch = data[0] + (data[1] << 7) - 0x2000;
-                ayumi_set_tone(synth->ayumi, index, note_to_period(synth, channel->note + (pitch / 8192.0) * 12));
+                channel->bend = (pitch / 8192.0) * 12;
+                ayumi_synth_update_tone(synth, index);
             }
             break;
         case LV2_MIDI_MSG_PGM_CHANGE: // Mixer
@@ -108,6 +116,10 @@ void ayumi_synth_midi(AyumiSynth* synth, uint8_t status, uint8_t data[]) {
                         break; // not at note on state
                     ayumi_synth_set_volume(synth, index, 0, false);
                     channel->note = -1;
+                    break;
+                case LV2_MIDI_CTL_MSB_MODWHEEL:
+                    channel->modulation = data[1] / 127.0 * 0.5;
+                    ayumi_synth_update_tone(synth, index);
                     break;
                 case LV2_MIDI_CTL_MSB_PAN: // Pan
                     {
@@ -160,8 +172,15 @@ static void ayumi_synth_reset(AyumiSynth* synth) {
         synth->channels[i].volume = 100 >> 3;
         synth->channels[i].envelope_on = 0;
         synth->channels[i].note = -1;
+        synth->channels[i].modulation = 0;
         ayumi_synth_set_volume(synth, i, 0, false);
         ayumi_set_mixer(synth->ayumi, i, 0, 1, 0);
         ayumi_set_pan(synth->ayumi, i, 0.5, 0);
     }
+}
+
+static void ayumi_synth_update_tone(AyumiSynth* synth, int index) {
+    const AyumiSynthChannel* channel = &synth->channels[index];
+    const float modulation = channel->modulation * sin(M_PI_2 * synth->counter / 2048.0);
+    ayumi_set_tone(synth->ayumi, index, note_to_period(synth, channel->note + channel->bend + modulation));
 }

@@ -9,6 +9,8 @@ typedef struct {
     bool envelope_on;
     int note;
     int velocity;
+    float bend;
+    float modulation;
 } AyumiSynthChannel;
 
 typedef struct {
@@ -21,6 +23,7 @@ typedef struct {
     int envelope_period;
     int envelope_shape;
     int32_t pitchbend;
+    uint32_t counter;
     AyumiSynthChannel channels[3];
 } AyumiSynth;
 
