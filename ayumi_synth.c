@@ -15,7 +15,7 @@
 
 static int note_to_period(AyumiSynth* synth, double note);
 static void ayumi_synth_update(AyumiSynth* synth, int cn);
-static int ayumi_synth_create(AyumiSynth* synth);
+static void ayumi_synth_reset(AyumiSynth* synth);
 
 int ayumi_synth_init(AyumiSynth* synth, double sample_rate) {
     synth->mode = YMMODE;
@@ -24,15 +24,11 @@ int ayumi_synth_init(AyumiSynth* synth, double sample_rate) {
     synth->remove_dc = false;
     synth->ayumi = calloc(sizeof(struct ayumi), 1);
 
-    synth->envelope_period = 0;
-    synth->envelope_shape = 0;
-    synth->noise_period = 0;
-    for (int i = 0; i < 3; i++) {
-        synth->channels[i].volume = 100 >> 3;
-        synth->channels[i].envelope_on = 0;
-    }
+    const bool ok = ayumi_configure(synth->ayumi, synth->mode, synth->clock, (int) synth->sample_rate);
 
-    return ayumi_synth_create(synth);
+    ayumi_synth_reset(synth);
+
+    return ok;
 }
 
 void ayumi_synth_process(AyumiSynth* synth, float* left, float *right) {
@@ -152,15 +148,16 @@ void ayumi_synth_midi(AyumiSynth* synth, uint8_t status, uint8_t data[]) {
                 ayumi_set_mixer(synth->ayumi, index, tone_off, noise_off, channel->envelope_on);
             }
             break;
+        case LV2_MIDI_MSG_RESET:
+            ayumi_synth_reset(synth);
+            break;
         case LV2_MIDI_MSG_CONTROLLER:
             switch (data[0]) {
                 case LV2_MIDI_CTL_RESET_CONTROLLERS: // Reset controllers
-                    channel->volume = 100 >> 3;
                     if (channel->note != -1) {
-                        ayumi_set_volume(synth->ayumi, index, round(channel->volume * channel->velocity / 127.0));
                         ayumi_set_tone(synth->ayumi, index, note_to_period(synth, channel->note));
+                        ayumi_set_volume(synth->ayumi, index, round(channel->volume * channel->velocity / 127.0));
                     }
-                    ayumi_set_pan(synth->ayumi, index, 0.5, 0);
                     break;
                 case LV2_MIDI_CTL_ALL_SOUNDS_OFF: // All sounds off
                 case LV2_MIDI_CTL_ALL_NOTES_OFF: // All notes off
@@ -209,19 +206,19 @@ static int note_to_period(AyumiSynth* synth, double note) {
     return round(synth->clock / (16.0 * freq));
 }
 
-static int ayumi_synth_create(AyumiSynth* synth) {
-    const bool ok = ayumi_configure(synth->ayumi, synth->mode, synth->clock, (int) synth->sample_rate);
-
-    ayumi_set_noise(synth->ayumi, synth->noise_period);
+static void ayumi_synth_reset(AyumiSynth* synth) {
+    synth->envelope_period = 0;
+    synth->envelope_shape = 0;
+    synth->noise_period = 0;
     ayumi_set_envelope(synth->ayumi, synth->envelope_period);
     ayumi_set_envelope_shape(synth->ayumi, synth->envelope_shape);
+    ayumi_set_noise(synth->ayumi, synth->noise_period);
     for (int i = 0; i < 3; i++) {
-        if (synth->channels[i].note != -1) {
-            ayumi_synth_set_volume(synth, i, 0, false);
-        }
-        ayumi_set_pan(synth->ayumi, i, 0.5, 0);
+        synth->channels[i].volume = 100 >> 3;
+        synth->channels[i].envelope_on = 0;
+        synth->channels[i].note = -1;
+        ayumi_synth_set_volume(synth, i, 0, false);
         ayumi_set_mixer(synth->ayumi, i, 0, 1, 0);
+        ayumi_set_pan(synth->ayumi, i, 0.5, 0);
     }
-
-    return ok;
 }
