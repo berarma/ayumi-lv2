@@ -10,40 +10,12 @@
 #define AYMODE 0
 #define YMMODE 1
 
-int note_to_period(AyumiSynth* synth, double note ) {
-    double freq = 220.0 * pow(1.059463, note - 45.0);
-    return synth->clock / (16.0 * freq);
-}
+#define round(n) ((int)(n + 0.5))
+#define level(volume, velocity) (round((int)(volume * velocity / 127.0)))
 
-void ayumi_synth_update(AyumiSynth* synth, int cn) {
-    ayumi_set_noise(synth->ayumi, synth->noise_period);
-    ayumi_set_envelope(synth->ayumi, synth->envelope);
-    ayumi_set_envelope_shape(synth->ayumi, synth->envelope_shape);
-    for (int i = 0; i < 3; i++) {
-        if (cn == -1 || i == cn) {
-            if (synth->channels[i].note_on_state) {
-                ayumi_set_tone(synth->ayumi, i, synth->channels[i].period);
-                ayumi_set_volume(synth->ayumi, i, synth->channels[i].volume);
-            }
-            ayumi_set_pan(synth->ayumi, i, synth->channels[i].pan, 0);
-            ayumi_set_mixer(synth->ayumi, i, synth->channels[i].tone_off, synth->channels[i].noise_off, synth->channels[i].envelope_on);
-        }
-    }
-}
-
-int ayumi_synth_create(AyumiSynth* synth) {
-    const bool ok = ayumi_configure(synth->ayumi, synth->mode, synth->clock, (int) synth->sample_rate);
-
-    for (int i = 0; i < 3; i++) {
-        if (synth->channels[i].note_on_state) {
-            synth->channels[i].period = note_to_period(synth, synth->channels[i].note);
-        }
-    }
-
-    ayumi_synth_update(synth, -1);
-
-    return ok;
-}
+static int note_to_period(AyumiSynth* synth, double note);
+static void ayumi_synth_update(AyumiSynth* synth, int cn);
+static int ayumi_synth_create(AyumiSynth* synth);
 
 int ayumi_synth_init(AyumiSynth* synth, double sample_rate) {
     synth->mode = YMMODE;
@@ -52,16 +24,12 @@ int ayumi_synth_init(AyumiSynth* synth, double sample_rate) {
     synth->remove_dc = false;
     synth->ayumi = calloc(sizeof(struct ayumi), 1);
 
-    synth->envelope = 0;
+    synth->envelope_period = 0;
     synth->envelope_shape = 0;
     synth->noise_period = 0;
     for (int i = 0; i < 3; i++) {
-        synth->channels[i].period = 0;
-        synth->channels[i].volume = 15;
-        synth->channels[i].tone_off = 0;
-        synth->channels[i].noise_off = 1;
+        synth->channels[i].volume = 100 >> 3;
         synth->channels[i].envelope_on = 0;
-        synth->channels[i].pan = 0.5;
     }
 
     return ayumi_synth_create(synth);
@@ -101,6 +69,10 @@ inline void ayumi_synth_set_envelope_period(AyumiSynth* synth, int period) {
     ayumi_set_envelope(synth->ayumi, period);
 }
 
+inline void ayumi_synth_set_envelope_shape(AyumiSynth* synth, int shape) {
+    ayumi_set_envelope_shape(synth->ayumi, shape);
+}
+
 inline void ayumi_synth_set_envelope_hold(AyumiSynth* synth, bool hold) {
     ayumi_set_envelope_shape(synth->ayumi, (synth->ayumi->envelope_shape & 0xE) | hold);
 }
@@ -130,12 +102,17 @@ inline void ayumi_synth_set_envelope(AyumiSynth* synth, int index, bool envelope
     synth->ayumi->channels[index].e_on = envelope; // XXX Ayumi internals
 }
 
+inline void ayumi_synth_set_mixer(AyumiSynth* synth, int index, bool tone, bool noise) {
+    ayumi_synth_set_tone(synth, index, tone);
+    ayumi_synth_set_noise(synth, index, noise);
+}
+
 inline void ayumi_synth_set_tone(AyumiSynth* synth, int index, bool tone) {
-    synth->ayumi->channels[index].t_off = tone; // XXX Ayumi internals
+    synth->ayumi->channels[index].t_off = tone ? 0 : 1; // XXX Ayumi internals
 }
 
 inline void ayumi_synth_set_noise(AyumiSynth* synth, int index, bool noise) {
-    synth->ayumi->channels[index].n_off = noise; // XXX Ayumi internals
+    synth->ayumi->channels[index].n_off = noise ? 0 : 1; // XXX Ayumi internals
 }
 
 void ayumi_synth_midi(AyumiSynth* synth, uint8_t status, uint8_t data[]) {
@@ -149,104 +126,102 @@ void ayumi_synth_midi(AyumiSynth* synth, uint8_t status, uint8_t data[]) {
 
     switch (lv2_midi_message_type(&status)) {
         case LV2_MIDI_MSG_NOTE_OFF: // Note off
-            if (!channel->note_on_state || channel->note != data[0])
+            if (channel->note != data[0])
                 break; // not at note on state
             ayumi_synth_set_volume(synth, index, 0, false);
-            channel->note_on_state = false;
+            channel->note = -1;
             break;
         case LV2_MIDI_MSG_NOTE_ON:
-            ayumi_synth_set_volume(synth, index, (int)(channel->volume * data[1] / 127.0), channel->envelope_on);
-            ayumi_set_envelope_shape(synth->ayumi, synth->envelope_shape); // This will restart the envelope
-            channel->period = note_to_period(synth, data[0]);
-            ayumi_set_tone(synth->ayumi, index, channel->period);
-            channel->note_on_state = true;
+            ayumi_synth_set_volume(synth, index, round(channel->volume * data[1] / 127.0), channel->envelope_on);
+            ayumi_synth_set_envelope_shape(synth, synth->envelope_shape); // This will restart the envelope
+            ayumi_set_tone(synth->ayumi, index, note_to_period(synth, data[0]));
             channel->note = data[0];
+            channel->velocity = data[1];
             break;
         case LV2_MIDI_MSG_BENDER:
             {
                 const int pitch = data[0] + (data[1] << 7) - 0x2000;
-                channel->period = note_to_period(synth, channel->note + (pitch / 8192.0) * 12);
-                ayumi_set_tone(synth->ayumi, index, channel->period);
+                ayumi_set_tone(synth->ayumi, index, note_to_period(synth, channel->note + (pitch / 8192.0) * 12));
             }
             break;
         case LV2_MIDI_MSG_PGM_CHANGE: // Mixer
-            channel->tone_off = data[0] & 1 ? 1 : 0;
-            channel->noise_off = data[0] == 0 || data[0] == 3 ? 1 : 0;
-            ayumi_set_mixer(synth->ayumi, index, channel->tone_off, channel->noise_off, channel->note_on_state ? channel->envelope_on : 0);
+            {
+                bool tone_off = data[0] & 1 ? 1 : 0;
+                bool noise_off = (data[0] & 3) == 0 || (data[0] & 3) == 3 ? 1 : 0;
+                channel->envelope_on = data[0] > 3 ? 1 : 0;
+                ayumi_set_mixer(synth->ayumi, index, tone_off, noise_off, channel->envelope_on);
+            }
             break;
         case LV2_MIDI_MSG_CONTROLLER:
             switch (data[0]) {
                 case LV2_MIDI_CTL_RESET_CONTROLLERS: // Reset controllers
                     channel->volume = 100 >> 3;
-                    channel->pan = 0.5;
-                    channel->envelope_on = false;
-                    ayumi_synth_set_volume(synth, index, channel->volume, channel->envelope_on);
-                    ayumi_set_pan(synth->ayumi, index, channel->pan, 0);
-                    channel->period = note_to_period(synth, channel->note);
-                    ayumi_set_tone(synth->ayumi, index, channel->period);
+                    if (channel->note != -1) {
+                        ayumi_set_volume(synth->ayumi, index, round(channel->volume * channel->velocity / 127.0));
+                        ayumi_set_tone(synth->ayumi, index, note_to_period(synth, channel->note));
+                    }
+                    ayumi_set_pan(synth->ayumi, index, 0.5, 0);
                     break;
                 case LV2_MIDI_CTL_ALL_SOUNDS_OFF: // All sounds off
                 case LV2_MIDI_CTL_ALL_NOTES_OFF: // All notes off
-                    if (!channel->note_on_state)
+                    if (channel->note == -1)
                         break; // not at note on state
                     ayumi_synth_set_volume(synth, index, 0, false);
-                    channel->note_on_state = false;
+                    channel->note = -1;
                     break;
                 case LV2_MIDI_CTL_MSB_PAN: // Pan
-                    if (data[2] < 64) {
-                        channel->pan = data[2] / 128.0;
-                    } else {
-                        channel->pan = (data[2] - 64) / 127.0 + 0.5;
+                    {
+                        const float pan = data[1] < 64 ? data[1] / 128.0 : (data[1] - 64) / 126.0 + 0.5;
+                        ayumi_set_pan(synth->ayumi, index, pan, 0);
                     }
-                    ayumi_set_pan(synth->ayumi, index, channel->pan, 0);
                     break;
                 case LV2_MIDI_CTL_MSB_MAIN_VOLUME: // Amplitude
-                    channel->volume = data[2] >> 3;
-                    if (channel->note_on_state) {
-                        ayumi_set_volume(synth->ayumi, index, channel->volume);
+                    channel->volume = data[1] >> 3;
+                    if (channel->note != -1) {
+                        ayumi_set_volume(synth->ayumi, index, round(channel->volume * channel->velocity / 127.0));
                     }
                     break;
-                case LV2_MIDI_CTL_SC1_SOUND_VARIATION: // Env. on/off
-                    channel->envelope_on = data[2] >= 64;
-                    if (channel->note_on_state) {
-                        ayumi_synth_set_envelope(synth, index, channel->envelope_on);
-                    }
+                case LV2_MIDI_CTL_MSB_GENERAL_PURPOSE1: // Noise period
+                    ayumi_set_noise(synth->ayumi, data[1] >> 2);
                     break;
-                case LV2_MIDI_CTL_SC2_TIMBRE: // Env. Hold
-                    synth->envelope_shape = (synth->envelope_shape & 0xE) | (data[2] >= 64 ? 1 : 0);
-                    ayumi_set_envelope_shape(synth->ayumi, synth->envelope_shape);
+                case LV2_MIDI_CTL_MSB_GENERAL_PURPOSE2: // Env. period coarse
+                    synth->envelope_period = (synth->envelope_period & 0x007F) | (data[1] << 7);
+                    synth->envelope_period += 0.000000204 * exp(0.001599763 * synth->envelope_period);
+                    ayumi_set_envelope(synth->ayumi, synth->envelope_period);
                     break;
-                case LV2_MIDI_CTL_SC3_RELEASE_TIME: // Env. Alternate
-                    synth->envelope_shape = (synth->envelope_shape & 0xD) | (data[2] >= 64 ? 2 : 0);
-                    ayumi_set_envelope_shape(synth->ayumi, synth->envelope_shape);
+                case LV2_MIDI_CTL_MSB_GENERAL_PURPOSE3: // Env. period fine
+                    synth->envelope_period = (synth->envelope_period & 0xFF80) | data[1];
+                    ayumi_set_envelope(synth->ayumi, synth->envelope_period);
                     break;
-                case LV2_MIDI_CTL_SC4_ATTACK_TIME: // Env. Attack
-                    synth->envelope_shape = (synth->envelope_shape & 0xB) | (data[2] >= 64 ? 4 : 0);
-                    ayumi_set_envelope_shape(synth->ayumi, synth->envelope_shape);
-                    break;
-                case LV2_MIDI_CTL_SC5_BRIGHTNESS: // Env. Continue
-                    synth->envelope_shape = (synth->envelope_shape & 0x7) | (data[2] >= 64 ? 8 : 0);
-                    ayumi_set_envelope_shape(synth->ayumi, synth->envelope_shape);
-                    break;
-                case LV2_MIDI_CTL_SC6: // Env. period coarse
-                    synth->envelope = (synth->envelope & 0x01FF) | (data[2] << 9);
-                    ayumi_set_envelope(synth->ayumi, synth->envelope);
-                    break;
-                case LV2_MIDI_CTL_SC7: // Env. period fine
-                    synth->envelope = (synth->envelope & 0xFE03) | (data[2] << 2);
-                    ayumi_set_envelope(synth->ayumi, synth->envelope);
-                    break;
-                case LV2_MIDI_CTL_SC8: // Env. period extra-fine
-                    synth->envelope = (synth->envelope & 0xFFFC) | (data[2] >> 5);
-                    ayumi_set_envelope(synth->ayumi, synth->envelope);
-                    break;
-                case LV2_MIDI_CTL_SC9: // Noise period
-                    synth->noise_period = data[2] >> 2;
-                    ayumi_set_noise(synth->ayumi, synth->noise_period);
+                case LV2_MIDI_CTL_MSB_GENERAL_PURPOSE4: // Env. shape
+                    synth->envelope_shape = (data[1] >> 4) | 8;
+                    ayumi_synth_set_envelope_shape(synth, synth->envelope_shape);
                     break;
             }
             break;
         default:
             break;
     }
+}
+
+static int note_to_period(AyumiSynth* synth, double note) {
+    double freq = 220.0 * pow(1.059463, note - 45.0);
+    return round(synth->clock / (16.0 * freq));
+}
+
+static int ayumi_synth_create(AyumiSynth* synth) {
+    const bool ok = ayumi_configure(synth->ayumi, synth->mode, synth->clock, (int) synth->sample_rate);
+
+    ayumi_set_noise(synth->ayumi, synth->noise_period);
+    ayumi_set_envelope(synth->ayumi, synth->envelope_period);
+    ayumi_set_envelope_shape(synth->ayumi, synth->envelope_shape);
+    for (int i = 0; i < 3; i++) {
+        if (synth->channels[i].note != -1) {
+            ayumi_synth_set_volume(synth, i, 0, false);
+        }
+        ayumi_set_pan(synth->ayumi, i, 0.5, 0);
+        ayumi_set_mixer(synth->ayumi, i, 0, 1, 0);
+    }
+
+    return ok;
 }
