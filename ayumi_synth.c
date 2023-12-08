@@ -2,7 +2,6 @@
 #include <stdbool.h>
 #include <math.h>
 #include <lv2/midi/midi.h>
-#include "ayumi.h"
 #include "ayumi_synth.h"
 
 #define DEFAULT_CLOCK 2e6 /* clock_rate / (sample_rate * 8 * 8) must be < 1.0 */
@@ -53,73 +52,6 @@ void ayumi_synth_process(AyumiSynth* synth, float* left, float *right) {
 
 void ayumi_synth_close(AyumiSynth* synth) {
     free(synth->ayumi);
-}
-
-inline void ayumi_synth_set_remove_dc(AyumiSynth* synth, bool remove_dc) {
-    synth->remove_dc = remove_dc;
-}
-
-inline int ayumi_synth_set_clock(AyumiSynth* synth, int clock) {
-    synth->ayumi->step = clock / (synth->sample_rate * 8 * DECIMATE_FACTOR); // XXX Ayumi internals
-    return synth->ayumi->step < 1;
-}
-
-inline void ayumi_synth_set_mode(AyumiSynth* synth, bool mode) {
-    synth->ayumi->dac_table = mode ? YM_dac_table : AY_dac_table; // XXX Ayumi internals
-}
-
-inline void ayumi_synth_set_noise_period(AyumiSynth* synth, int period) {
-    ayumi_set_noise(synth->ayumi, period);
-}
-
-inline void ayumi_synth_set_envelope_period(AyumiSynth* synth, int period) {
-    ayumi_set_envelope(synth->ayumi, period);
-}
-
-inline void ayumi_synth_set_envelope_shape(AyumiSynth* synth, int shape) {
-    ayumi_set_envelope_shape(synth->ayumi, shape);
-}
-
-inline void ayumi_synth_set_envelope_hold(AyumiSynth* synth, bool hold) {
-    ayumi_set_envelope_shape(synth->ayumi, (synth->ayumi->envelope_shape & 0xE) | hold);
-}
-
-inline void ayumi_synth_set_envelope_alternate(AyumiSynth* synth, bool alternate) {
-    ayumi_set_envelope_shape(synth->ayumi, (synth->ayumi->envelope_shape & 0xD) | (alternate << 1));
-}
-
-inline void ayumi_synth_set_envelope_attack(AyumiSynth* synth, bool attack) {
-    ayumi_set_envelope_shape(synth->ayumi, (synth->ayumi->envelope_shape & 0xB) | (attack << 2));
-}
-
-inline void ayumi_synth_set_envelope_continue(AyumiSynth* synth, bool cont) {
-    ayumi_set_envelope_shape(synth->ayumi, (synth->ayumi->envelope_shape & 0x7) | (cont << 8));
-}
-
-inline void ayumi_synth_set_tone_period(AyumiSynth* synth, int index, int period) {
-    ayumi_set_tone(synth->ayumi, index, period);
-}
-
-inline void ayumi_synth_set_volume(AyumiSynth* synth, int index, int volume, bool envelope) {
-    ayumi_set_volume(synth->ayumi, index, volume);
-    ayumi_synth_set_envelope(synth, index, envelope);
-}
-
-inline void ayumi_synth_set_envelope(AyumiSynth* synth, int index, bool envelope) {
-    synth->ayumi->channels[index].e_on = envelope; // XXX Ayumi internals
-}
-
-inline void ayumi_synth_set_mixer(AyumiSynth* synth, int index, bool tone, bool noise) {
-    ayumi_synth_set_tone(synth, index, tone);
-    ayumi_synth_set_noise(synth, index, noise);
-}
-
-inline void ayumi_synth_set_tone(AyumiSynth* synth, int index, bool tone) {
-    synth->ayumi->channels[index].t_off = tone ? 0 : 1; // XXX Ayumi internals
-}
-
-inline void ayumi_synth_set_noise(AyumiSynth* synth, int index, bool noise) {
-    synth->ayumi->channels[index].n_off = noise ? 0 : 1; // XXX Ayumi internals
 }
 
 void ayumi_synth_midi(AyumiSynth* synth, uint8_t status, uint8_t data[]) {
