@@ -13,6 +13,17 @@
 #define round(n) ((int)(n + 0.5))
 #define level(volume, velocity) (round((int)(volume * velocity / 127.0)))
 
+#define max(a,b) \
+    ({ __typeof__ (a) _a = (a); \
+     __typeof__ (b) _b = (b); \
+     _a > _b ? _a : _b; })
+
+#define min(a,b) \
+    ({ __typeof__ (a) _a = (a); \
+     __typeof__ (b) _b = (b); \
+     _a < _b ? _a : _b; })
+
+
 static int note_to_period(AyumiSynth* synth, double note);
 static void ayumi_synth_update(AyumiSynth* synth, int cn);
 static void ayumi_synth_reset(AyumiSynth* synth);
@@ -168,8 +179,8 @@ void ayumi_synth_midi(AyumiSynth* synth, uint8_t status, uint8_t data[]) {
                     break;
                 case LV2_MIDI_CTL_MSB_PAN: // Pan
                     {
-                        const float pan = data[1] < 64 ? data[1] / 128.0 : (data[1] - 64) / 126.0 + 0.5;
-                        ayumi_set_pan(synth->ayumi, index, pan, 0);
+                        const float pan = max(0, data[1] - 1) / 126.0;
+                        ayumi_set_pan(synth->ayumi, index, pan, 1);
                     }
                     break;
                 case LV2_MIDI_CTL_MSB_MAIN_VOLUME: // Amplitude
