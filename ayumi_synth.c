@@ -95,8 +95,10 @@ void ayumi_synth_midi(AyumiSynth* synth, uint8_t status, uint8_t data[]) {
             {
                 bool tone_off = data[0] & 1 ? 1 : 0;
                 bool noise_off = (data[0] & 3) == 0 || (data[0] & 3) == 3 ? 1 : 0;
+                channel->note = -1;
                 channel->envelope_on = data[0] > 3 ? 1 : 0;
-                ayumi_set_mixer(synth->ayumi, index, tone_off, noise_off, channel->envelope_on);
+                ayumi_set_volume(synth->ayumi, index, 0);
+                ayumi_set_mixer(synth->ayumi, index, tone_off, noise_off, 0);
             }
             break;
         case LV2_MIDI_MSG_RESET:
