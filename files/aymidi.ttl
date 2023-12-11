@@ -1,0 +1,81 @@
+@prefix atom:    <http://lv2plug.in/ns/ext/atom#> .
+@prefix bufsize: <http://lv2plug.in/ns/ext/buf-size#> .
+@prefix doap:    <http://usefulinc.com/ns/doap#> .
+@prefix foaf:    <http://xmlns.com/foaf/0.1/> .
+@prefix lv2:     <http://lv2plug.in/ns/lv2core#> .
+@prefix midi:    <http://lv2plug.in/ns/ext/midi#> .
+@prefix opts:    <http://lv2plug.in/ns/ext/options#> .
+@prefix param:   <http://lv2plug.in/ns/ext/parameters#> .
+@prefix pg:      <http://lv2plug.in/ns/ext/port-groups#> .
+@prefix pprop:   <http://lv2plug.in/ns/ext/port-props#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix state:   <http://lv2plug.in/ns/ext/state#> .
+@prefix time:    <http://lv2plug.in/ns/ext/time#> .
+@prefix urid:    <http://lv2plug.in/ns/ext/urid#> .
+@prefix units:   <http://lv2plug.in/ns/extensions/units#> .
+@prefix plug:    <http://lv2plug.in/plugins/eg-params#> .
+@prefix patch:   <http://lv2plug.in/ns/ext/patch#> .
+@prefix lv2pg:   <http://lv2plug.in/ns/ext/port-groups#> .
+@prefix aymidi: <http://github.com/berarma/aymidi#> .
+
+plug:clock
+    a lv2:Parameter ;
+    rdfs:label "Clock" ;
+    rdfs:comment "Clock frequency" ;
+    lv2pg:group aymidi:Setup ;
+    rdfs:range atom:Double ;
+    units:unit units:mhz ;
+    lv2:minimum 1.0 ;
+    lv2:maximum 2.0 ;
+    lv2:default 2.0 .
+
+plug:ymmode
+    a lv2:Parameter ;
+    rdfs:label "YM Mode" ;
+    rdfs:comment "Enable YM2149 mode" ;
+    lv2pg:group aymidi:Setup ;
+    rdfs:range atom:Bool ;
+    lv2:default 1 .
+
+<https://github.com/berarma/aymidi>
+    a doap:Project, lv2:Plugin, lv2:InstrumentPlugin ;
+    doap:name "AyMidi" ;
+    doap:license <https://spdx.org/licenses/MIT> ;
+    doap:maintainer [
+        foaf:name     "Bernat Arlandis" ;
+        foaf:homepage <https://github.com/berarma/aymidi> ;
+        foaf:mbox     <mailto:berarma@hotmail.com> ;
+    ] ;
+    rdfs:comment "AY-3-8910/YM2149 MIDI Synth for LV2" ;
+
+    lv2:minorVersion 0 ;
+    lv2:microVersion 1 ;
+
+    lv2:requiredFeature urid:map ;
+    lv2:optionalFeature opts:options ;
+
+    opts:supportedOption param:sampleRate ;
+
+    patch:writable plug:clock,
+        plug:ymmode ;
+
+    lv2:port [
+        a lv2:InputPort, atom:AtomPort ;
+        atom:bufferType atom:Sequence ;
+        atom:supports midi:MidiEvent ;
+        lv2:designation lv2:control ;
+        lv2:index 0 ;
+        lv2:symbol "control" ;
+        lv2:name "Control"
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 1 ;
+        lv2:symbol "out_left" ;
+        lv2:name "Left Output"
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 2 ;
+        lv2:symbol "out_right" ;
+        lv2:name "Right Output"
+    ] .
