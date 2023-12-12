@@ -117,7 +117,7 @@ void synth_midi(Synth* synth, uint8_t status, uint8_t data[]) {
                 bool tone = data[0] & 1 ? 0 : 1;
                 bool noise = !((data[0] & 3) == 0 || (data[0] & 3) == 3);
                 channel->note = -1;
-                channel->envelope_on = data[0] > 3;
+                channel->envelope_on = data[0] >= 3;
                 synth_set_volume(synth, index, 0, false);
                 synth_set_mixer(synth, index, tone, noise);
             }
@@ -186,7 +186,7 @@ static int note_to_period(Synth* synth, double note) {
 
 static void synth_reset(Synth* synth) {
     synth->envelope_period = 0;
-    synth->envelope_shape = 0;
+    synth->envelope_shape = 8;
     synth->noise_period = 0;
     synth_set_envelope_period(synth, synth->envelope_period);
     synth_set_envelope_shape(synth, synth->envelope_shape);
@@ -205,7 +205,9 @@ static void synth_reset(Synth* synth) {
 static void synth_update_tone(Synth* synth, int index) {
     const SynthChannel* channel = &synth->channels[index];
     const float modulation = channel->modulation * sin(M_PI_2 * synth->counter / 2048.0);
-    synth_set_tone_period(synth, index, note_to_period(synth, channel->note + channel->bend + modulation));
+    const int period = note_to_period(synth, channel->note + channel->bend + modulation);
+    synth_set_tone_period(synth, index, period);
+    synth_set_envelope_period(synth, round(period / 16.0));
 }
 
 static void synth_set_noise_period(Synth* synth, int period) {
